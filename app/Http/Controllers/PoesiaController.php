@@ -17,11 +17,22 @@ class PoesiaController extends Controller
     }
 
     public function show($id) { // Método para mostrar solo un registro.
-        $poesias = Poesia::find($id)->load('user');
-        return response()->json(array(
-            'poesias' => $poesias,
-            'status' => 'success'
-        ),200);
+
+        $poesias = Poesia::find($id);
+
+        if(is_object($poesias)){
+            $poesias = Poesia::find($id)->load('user');
+            return response()->json(array(
+                'poesias' => $poesias,
+                'status' => 'success'
+            ),200);
+        }else {
+            return response()->json(array(
+                'message' => 'La poesía no existe.',
+                'status' => 'error'
+            ),200);
+        }
+
     }
 
     public function update($id, Request $request){ 
@@ -52,6 +63,11 @@ class PoesiaController extends Controller
             }
 
             // Actualizar el registro.
+            unset($params_array['id']);
+            unset($params_array['user_id']);
+            unset($params_array['created_at']);
+            unset($params_array['updated_at']);
+            unset($params_array['user']);
             $poesia = Poesia::where('id', $id)->update($params_array);
 
             $data = array(
@@ -126,7 +142,7 @@ class PoesiaController extends Controller
                 $validate = \Validator::make($params_array,[
                     'title' => 'required|min:5',
                     'description' => 'required',
-                    'status' => 'required'
+                    'image' => 'required'
                 ]);
 
                 if($validate->fails()){
@@ -142,6 +158,7 @@ class PoesiaController extends Controller
             $poesia->title = $params->title;
             $poesia->description = $params->description;
             $poesia->status = $params->status;
+            $poesia->image = $params->image;
 
 
             $poesia->save();
