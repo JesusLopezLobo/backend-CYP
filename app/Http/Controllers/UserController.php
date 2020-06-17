@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\User;
 use App\Helpers\JwtAuth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Response;
 
 class UserController extends Controller
 {
@@ -17,6 +18,7 @@ class UserController extends Controller
         $name = (!is_null($json) && isset($params->name)) ? $params->name : null;
         $surname = (!is_null($json) && isset($params->surname)) ? $params->surname : null;
         $role = 'user';
+        $image = 'defecto.jpeg';
         $password = (!is_null($json) && isset($params->password)) ? $params->password : null;
 
         if(!is_null($email) && !is_null($password) && !is_null($name)){
@@ -28,6 +30,7 @@ class UserController extends Controller
             $user->name = $name;
             $user->surname = $surname;
             $user->role = $role;
+            $user->image = $image;
             // Contraseña cifrada.
             $pwd = hash('sha256', $password);
             $user->password = $pwd;
@@ -105,5 +108,167 @@ class UserController extends Controller
 
         return response()->json($signup, 200); // Nos devuelve en json el token. codigo 200 para que nos lo devuelva.
 
+    }
+
+    public function update(Request $request){
+        
+
+        // Comprobar que el usuario está identificado.
+        $hash = $request->header('Authorization', null); // Caebecera de autorización que lleva todo el token del usuario generado al loguearse.
+ 
+        $jwtAuth = new JwtAuth(); // Nuestra librería token creada por nosotros.
+        $checkToken = $jwtAuth->checkToken($hash); // Nos permite comprobar si el token es válido o no.
+
+        // Recoger los datos por post.
+        $json = $request->input('json', null);
+        $params_array = json_decode($json, true);
+
+        if($checkToken && !empty($params_array)){
+
+
+
+            // Sacar al usuario identificado.
+            $user = $jwtAuth->checkToken($hash, true);
+
+            // Validar datos.
+            $validate = \Validator::make($params_array,[
+                'name' => 'required',
+                'surname' => 'required',
+                'email' => 'required|email|unique:users'.$user->sub,
+            ]);
+
+            // Quitar todos los campos que no quiero actualizar.
+            unset($params_array['id']);
+            unset($params_array['role']);
+            unset($params_array['password']);
+            unset($params_array['created_at']);
+            unset($params_array['updated_at']);
+            unset($params_array['remember_token']);
+
+            // Actualizar usuario en bbdd. 
+            $user_update = User::where('id', $user->sub)->update($params_array);
+
+            // Devolver array con resultado.
+            $data = array(
+                'code' => 200,
+                'status' => 'success',
+                'user' => $user, // Datos antiguos antes de modificarlos.
+                'changes' => $params_array // Datos ya cambiados.
+            );
+
+        }else {
+
+            $data = array(
+                'code' => 400,
+                'status' => 'error',
+                'message' => 'El usuario no está identificado.'
+            );
+
+        }
+
+        return response()->json($data, $data['code']);
+
+    }
+
+    public function upload(Request $request){
+
+        //var_dump("he llegado");die();
+        // Recoger datos de la petición.
+        $image = $request->file('file0');
+
+        // Validación de imagen.
+        $validate = \Validator::make($request->all(), [
+            'file0' => 'required|image|mimes:jpg,jpeg,png,gif'
+        ]);
+
+        // Guardar imagen.
+        if(!$image || $validate->fails()){
+            
+            $data = array(
+                'code' => 400,
+                'status' => 'error',
+                'message' => 'Error al subir imagen.'
+            );
+
+        }else{
+
+            $image_Name = time().$image->getClientOriginalName();
+            \Storage::disk('users')->put($image_Name, \File::get($image));
+
+            $data = array(
+                'image' => $image_Name,
+                'code' => 200,
+                'status' => 'success'
+            );
+
+        }
+
+        return response()->json($data, $data['code']);
+
+    }
+
+    public function getImage($filename){
+
+        $isset = \Storage::disk('users')->exists($filename);
+
+        if($isset){
+            $file = \Storage::disk('users')->get($filename);
+            return new Response($file, 200);
+        }else {
+
+            $data = array(
+                'code' => 404,
+                'message' => 'La imagen no existe.',
+                'status' => 'success'
+            ); 
+
+            return response()->json($data, $data['code']);
+        }
+
+    }
+
+    public function show(){
+        $user = User::all();
+
+        if(is_object($user)){
+            $data = [
+                'code' => 200,
+                'status' => 'success',
+                'user' => $user
+            ];
+        }else {
+            $data = [
+                'code' => 400,
+                'status' => 'error',
+                'message' => "No hay usuarios."
+            ];
+        }
+
+        return response()->json($data, $data['code']);
+    }
+
+    public function detail($id){ // Sacar detalles de un usuario en concreto.
+
+        $user = User::find($id);
+
+        if(is_object($user)){
+
+            $data = array(
+                'code' => 200,
+                'status' => 'success',
+                'user' => $user
+            );
+
+        }else {
+
+            $data = array(
+                'code' => 400,
+                'status' => 'error',
+                'message' => 'El usuario no existe'
+            );
+            
+        }
+
+        return response()->json($data, $data['code']);
     }
 }

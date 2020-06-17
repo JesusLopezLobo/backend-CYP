@@ -4,26 +4,26 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Helpers\JwtAuth;
-use App\Poesia;
+use App\Nota;
 
-class PoesiaController extends Controller
+class NotaController extends Controller
 {
     public function index( Request $request) { // Método para mostrar todos los registros.
-        $poesias = Poesia::all()->load('user');
+        $notas = Nota::all()->load('user');
         return response()->json(array(
-            'poesias' => $poesias,
+            'notas' => $notas,
             'status' => 'success'
         ), 200);      
     }
 
     public function show($id) { // Método para mostrar solo un registro.
 
-        $poesias = Poesia::find($id);
+        $notas = Nota::find($id);
 
-        if(is_object($poesias)){
-            $poesias = Poesia::find($id)->load('user');
+        if(is_object($notas)){
+            $notas = Nota::find($id)->load('user');
             return response()->json(array(
-                'poesias' => $poesias,
+                'notas' => $nota,
                 'status' => 'success'
             ),200);
         }else {
@@ -68,10 +68,10 @@ class PoesiaController extends Controller
             unset($params_array['created_at']);
             unset($params_array['updated_at']);
             unset($params_array['user']);
-            $poesia = Poesia::where('id', $id)->update($params_array);
+            $notas = Nota::where('id', $id)->update($params_array);
 
             $data = array(
-                'poesia' => $params,
+                'nota' => $params,
                 'status' => 'success',
                 'code' => 200
             );
@@ -97,15 +97,15 @@ class PoesiaController extends Controller
         if($checkToken){ // Si es válido nos guarda la poesía.
 
             // Comprobar que existe el registro.
-            $poesia = Poesia::find($id);
+            $nota = Nota::find($id);
 
             // Borrarlo.
 
-            $poesia->delete();
+            $nota->delete();
             //var_dump("llego"); die();
             // Devolverlo.
             $data = array(
-                'car' => $poesia,
+                'car' => $nota,
                 'satus' => 'success',
                 'code' => 200
             );
@@ -140,9 +140,7 @@ class PoesiaController extends Controller
             // Validar el coche.
             
                 $validate = \Validator::make($params_array,[
-                    'title' => 'required',
-                    'description' => 'required',
-                    'image' => 'required'
+                    'title' => 'required|min:2'
                 ]);
 
                 if($validate->fails()){
@@ -153,18 +151,17 @@ class PoesiaController extends Controller
 
             // Guardar el coche.
 
-            $poesia = new Poesia();
-            $poesia->user_id = $user->sub;
-            $poesia->title = $params->title;
-            $poesia->description = $params->description;
-            $poesia->status = $params->status;
-            $poesia->image = $params->image;
+            $nota = new Nota();
+            $nota->user_id = $user->sub;
+            $nota->title = $params->title;
+            $nota->description = $params->description;
+            $nota->status = $params->status;
 
 
-            $poesia->save();
+            $nota->save();
 
             $data = array(
-                'poesia' => $poesia,
+                'nota' => $nota,
                 'status' => 'success',
                 'code' => 200
             );  
